@@ -9,32 +9,40 @@ from fastapi import HTTPException, status
 
 from rule_handlers import get_rule_handler, normalize_source_rule
 
+# ---------------------------------------------------------------------------
+# Load default_config.json (located next to this file's parent directory)
+# ---------------------------------------------------------------------------
+_DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "default_config.json"
+
+
+def _load_default_config() -> Dict[str, Any]:
+    """Load default_config.json and return its contents, or empty dict on failure."""
+    if _DEFAULT_CONFIG_PATH.exists():
+        try:
+            return json.loads(_DEFAULT_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+_DEFAULT_CFG = _load_default_config()
+_DEFAULT_MODEL_META: Dict[str, Any] = _DEFAULT_CFG.get("model_meta_defaults", {})
+_DEFAULT_FAMILY_HINTS: Dict[str, str] = _DEFAULT_CFG.get("model_family_hints", {})
+
 
 def guess_model_family(model_name: str) -> str:
     lower = model_name.lower()
-    if "qwen" in lower:
-        return "qwen2"
-    if "glm" in lower:
-        return "glm"
-    if "mistral" in lower:
-        return "mistral"
-    if "llava" in lower or "llama" in lower:
-        return "llama"
-    return "llama"
+    for keyword, family in _DEFAULT_FAMILY_HINTS.items():
+        if keyword in lower:
+            return family
+    return _DEFAULT_MODEL_META.get("family", "llama")
 
 
 def default_model_meta(model_name: str) -> Dict[str, Any]:
     family = guess_model_family(model_name)
-    return {
-        "family": family,
-        "parameter_size": "7B",
-        "quantization_level": "Q4_K_M",
-        "context_length": 32768,
-        "parameter_count": 7000000000,
-        "capabilities": ["completion"],
-        "size": 0,
-        "digest": "",
-    }
+    meta = dict(_DEFAULT_MODEL_META)
+    meta["family"] = family
+    return meta
 
 
 def register_model_alias(
@@ -72,6 +80,14 @@ def register_model_entry(
     if not isinstance(model_cfg, dict):
         raise RuntimeError(
             f"model '{desired_name}' in source '{source_name}' must be an object")
+
+    # Model-level enable/disable: skip disabled models entirely.
+    model_enabled = model_cfg.get("enable", True)
+    if not isinstance(model_enabled, bool):
+        raise RuntimeError(
+            f"model '{desired_name}' in source '{source_name}' enable must be a boolean")
+    if not model_enabled:
+        return desired_name
 
     canonical_name = desired_name
     existing = model_registry.get(canonical_name)
@@ -167,6 +183,7 @@ class ProxyState:
         self.model_registry: Dict[str, Dict[str, Any]] = config["models"]
         self.model_aliases: Dict[str, str] = config["aliases"]
         self.default_model: str = config["default_model"]
+        self.disabled_models: set[str] = config["disabled_models"]
 
     def _load_proxy_config(self, config_path: Path) -> Dict[str, Any]:
         if not config_path.exists():
@@ -185,6 +202,7 @@ class ProxyState:
         model_registry: Dict[str, Dict[str, Any]] = {}
         model_aliases: Dict[str, str] = {}
         source_order: List[str] = []
+        disabled_models: set[str] = set()
         has_auto_discovery_source = False
 
         for source_name, source_cfg in sources.items():
@@ -264,6 +282,9 @@ class ProxyState:
             for model_name, model_cfg in models.items():
                 if isinstance(model_cfg, str):
                     model_cfg = {"upstream_model": model_cfg}
+                # Track explicitly disabled models so auto-discovery skips them.
+                if isinstance(model_cfg, dict) and model_cfg.get("enable") is False:
+                    disabled_models.add(str(model_name).strip())
                 register_model_entry(
                     model_registry, model_aliases, source_name, model_name, model_cfg)
 
@@ -286,6 +307,7 @@ class ProxyState:
             "models": model_registry,
             "aliases": model_aliases,
             "default_model": default_model,
+            "disabled_models": disabled_models,
         }
 
     def normalize_model_name(self, model_name: Optional[str]) -> str:
@@ -322,6 +344,8 @@ class ProxyState:
                 continue
             model_name = str(model_cfg.get("name") or "").strip()
             if not model_name:
+                continue
+            if model_name in self.disabled_models or model_name.lower() in self.disabled_models:
                 continue
             register_model_entry(
                 self.model_registry,

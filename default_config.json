@@ -1,0 +1,22 @@
+{
+	"model_meta_defaults": {
+		"family": "llama",
+		"parameter_size": "7B",
+		"quantization_level": "Q4_K_M",
+		"context_length": 131072,
+		"parameter_count": 7000000000,
+		"capabilities": ["completion"],
+		"size": 0,
+		"digest": ""
+	},
+	"model_family_hints": {
+		"deepseek": "deepseek",
+		"qwen": "qwen2",
+		"glm": "glm",
+		"mistral": "mistral",
+		"mimo": "mimo",
+		"llava": "llama",
+		"llama": "llama"
+	},
+	"presenters_context_length_fallback": 8192
+}

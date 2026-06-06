@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from proxy_core.state import guess_model_family
+from proxy_core.state import guess_model_family, _DEFAULT_MODEL_META, _DEFAULT_CFG
 
 
 def now_iso() -> str:
@@ -21,13 +21,17 @@ def effective_capabilities(meta: Dict[str, Any], source_cfg: Dict[str, Any]) -> 
 
 
 def merged_model_info(meta: Dict[str, Any], family: str) -> Dict[str, Any]:
-    context_length = meta.get("context_length", 8192)
+    ctx_fallback = _DEFAULT_CFG.get(
+        "presenters_context_length_fallback",
+        _DEFAULT_MODEL_META.get("context_length", 8192),
+    )
+    context_length = meta.get("context_length", ctx_fallback)
     info: Dict[str, Any] = {
         "general.architecture": family,
         "general.file_type": 2,
-        "general.parameter_count": meta.get("parameter_count", 7000000000),
-        "general.parameter_size": meta.get("parameter_size", "7B"),
-        "general.quantization_level": meta.get("quantization_level", "Q4_K_M"),
+        "general.parameter_count": meta.get("parameter_count", _DEFAULT_MODEL_META.get("parameter_count", 7000000000)),
+        "general.parameter_size": meta.get("parameter_size", _DEFAULT_MODEL_META.get("parameter_size", "7B")),
+        "general.quantization_level": meta.get("quantization_level", _DEFAULT_MODEL_META.get("quantization_level", "Q4_K_M")),
         "general.quantization_version": 2,
         f"{family}.context_length": context_length,
         "tokenizer.ggml.model": "gpt2",
@@ -78,8 +82,8 @@ def build_tags_models(model_registry: Dict[str, Dict[str, Any]]) -> List[Dict[st
                 "format": "gguf",
                 "family": model_cfg["meta"].get("family", guess_model_family(name)),
                 "families": [model_cfg["meta"].get("family", guess_model_family(name))],
-                "parameter_size": model_cfg["meta"].get("parameter_size", "7B"),
-                "quantization_level": model_cfg["meta"].get("quantization_level", "Q4_K_M"),
+                "parameter_size": model_cfg["meta"].get("parameter_size", _DEFAULT_MODEL_META.get("parameter_size", "7B")),
+                "quantization_level": model_cfg["meta"].get("quantization_level", _DEFAULT_MODEL_META.get("quantization_level", "Q4_K_M")),
             },
         }
         for name, model_cfg in model_registry.items()
@@ -100,8 +104,8 @@ def build_ps_models(model_registry: Dict[str, Dict[str, Any]]) -> List[Dict[str,
                 "format": "gguf",
                 "family": model_cfg["meta"].get("family", guess_model_family(name)),
                 "families": [model_cfg["meta"].get("family", guess_model_family(name))],
-                "parameter_size": model_cfg["meta"].get("parameter_size", "7B"),
-                "quantization_level": model_cfg["meta"].get("quantization_level", "Q4_K_M"),
+                "parameter_size": model_cfg["meta"].get("parameter_size", _DEFAULT_MODEL_META.get("parameter_size", "7B")),
+                "quantization_level": model_cfg["meta"].get("quantization_level", _DEFAULT_MODEL_META.get("quantization_level", "Q4_K_M")),
             },
         }
         for name, model_cfg in model_registry.items()
