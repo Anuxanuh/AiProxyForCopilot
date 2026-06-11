@@ -518,8 +518,8 @@ class OpenAIRuleHandler(RuleHandler):
             yield ("data: " + json.dumps(done_chunk, ensure_ascii=False) + "\n\n").encode()
             yield b"data: [DONE]\n\n"
 
-        max_retries = 2
-        retry_backoff_seconds = (0.3, 0.8)
+        max_retries = 3
+        retry_backoff_seconds = (0.5, 1.5, 3.0)
         attempt = 0
         while True:
             try:
@@ -558,9 +558,9 @@ class OpenAIRuleHandler(RuleHandler):
             except (httpx.HTTPError, httpx.StreamError) as exc:
                 exc_details = _extract_exception_details(exc)
                 should_retry = (
-                    isinstance(exc, httpx.RemoteProtocolError)
-                    and not emitted_any_chunk
+                    not emitted_any_chunk
                     and attempt < max_retries
+                    and isinstance(exc, (httpx.RemoteProtocolError, httpx.ConnectError))
                 )
                 logger.warning(
                     "openai sse upstream connection failure source=%s model=%s emitted=%s attempt=%s max_retries=%s stats=%s error=%s error_details=%s request_id=%s created=%s",
