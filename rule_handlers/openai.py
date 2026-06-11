@@ -560,7 +560,7 @@ class OpenAIRuleHandler(RuleHandler):
                 should_retry = (
                     not emitted_any_chunk
                     and attempt < max_retries
-                    and isinstance(exc, (httpx.RemoteProtocolError, httpx.ConnectError))
+                    and isinstance(exc, (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadError))
                 )
                 logger.warning(
                     "openai sse upstream connection failure source=%s model=%s emitted=%s attempt=%s max_retries=%s stats=%s error=%s error_details=%s request_id=%s created=%s",

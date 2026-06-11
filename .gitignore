@@ -184,3 +184,7 @@ cython_debug/
 *.private.json
 Logs/**
 WebUi/**
+
+# Agent
+.mimocode/**
+AGENTS.md
