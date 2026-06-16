@@ -4,6 +4,9 @@
 
 A middleware that translates upstream LLM APIs into the Ollama HTTP API, enabling VS Code's GitHub Copilot to access custom sources via the Ollama interface.
 
+> VS Code Copilot now supports custom API sources natively, but Visual Studio does not yet.
+> VS Code Copilot users should switch to the built-in Custom Endpoints feature instead.
+
 ## Quick Start
 
 1. Install dependencies

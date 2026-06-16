@@ -4,6 +4,9 @@
 
 这是一个把上游大模型 API 转成 Ollama HTTP API 的中转层，让 VS Code 的 GitHub Copilot 通过 Ollama 接口访问自定义来源。
 
+> VS Code Copilot 目前已经支持自定义来源API了, 但是 Visual Studio 仍未支持
+> VS Code Copilot 用户请改用 VS Code 的自定义来源(Custom Endpoints)功能
+
 ## 快速开始
 
 1. 安装依赖
